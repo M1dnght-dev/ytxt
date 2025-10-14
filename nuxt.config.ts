@@ -2,15 +2,14 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  devtools: { enabled: true },
+  devtools: { enabled: false },
   css: ['~/assets/css/main.css'],
   vite: {
     plugins: [tailwindcss()],
   },
   app: {
     head: {
-      title: 'ytxt – YouTube Transcript Fetcher', // fallback title
-      titleTemplate: '%s - ytxt',
+      title: 'ytxt – YouTube Transcript Fetcher',
       htmlAttrs: { lang: 'en' },
       meta: [
         { charset: 'utf-8' },
@@ -22,7 +21,7 @@ export default defineNuxtConfig({
         { property: 'og:description', content: 'Fetch transcripts from any public YouTube video instantly with ytxt. Minimal, fast, and privacy-friendly.' },
         { property: 'og:image', content: 'https://ytxt.m1dnght.dev/ytxt.png' },
         { property: 'og:url', content: 'https://ytxt.m1dnght.dev' },
-        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:card', content: 'summary' },
       ],
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },

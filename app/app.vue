@@ -9,6 +9,7 @@
         Fetch and save transcripts from any YouTube video instantly.
       </p>
     </header>
+
     <main class="flex-grow flex items-center justify-center px-4">
       <div
         class="bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl p-6 md:p-10 w-full max-w-xl animate-fadeInUp border border-white/20">
@@ -16,18 +17,22 @@
           <input v-model="videoInput" type="text" placeholder="Enter YouTube Video ID or URL"
             class="w-full px-6 py-3 rounded-lg border border-white/30 placeholder-gray-300 bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition" />
         </div>
+
         <div class="mb-6 flex flex-col md:flex-row gap-4 justify-center">
           <button @click="fetchTranscript" :disabled="loading"
             class="flex-1 px-6 py-3 rounded-lg font-semibold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition transform hover:-translate-y-1 hover:scale-105 shadow-[0_0_12px_rgba(139,92,246,0.5)] hover:shadow-[0_0_18px_rgba(139,92,246,0.7)]">
             <span v-if="loading" class="animate-pulse">Fetching...</span>
             <span v-else>🚀 Fetch Transcript</span>
           </button>
+
           <button v-if="transcript" @click="downloadTranscript"
             class="flex-1 px-6 py-3 rounded-lg font-semibold bg-green-500 hover:bg-green-600 transition transform hover:-translate-y-1 hover:scale-105 shadow-[0_0_12px_rgba(34,197,94,0.5)] hover:shadow-[0_0_18px_rgba(34,197,94,0.7)]">
             💾 Download
           </button>
         </div>
+
         <p :class="statusClass" class="text-center mb-4">{{ status }}</p>
+
         <div v-if="transcript"
           class="bg-black/30 border border-white/20 p-4 rounded-lg max-h-80 overflow-y-auto text-gray-100 whitespace-pre-wrap animate-fadeIn">
           {{ transcript }}
@@ -36,6 +41,7 @@
     </main>
 
     <div class="h-[1px] w-full bg-white/10 my-10"></div>
+
     <section class="py-16 text-center animate-fadeIn">
       <h2 class="text-3xl md:text-4xl font-extrabold tracking-wide mb-10 drop-shadow-[0_0_10px_#9333ea]">
         🛠️ How to Use
@@ -50,9 +56,7 @@
         </div>
         <div
           class="p-6 bg-white/10 rounded-xl shadow-lg transition-all duration-300 transform hover:-translate-y-2 hover:scale-105 hover:shadow-[0_0_20px_#a78bfa]">
-          <h3 class="font-semibold text-xl mb-3">
-            ⚡ Step 2: Fetch Transcript
-          </h3>
+          <h3 class="font-semibold text-xl mb-3">⚡ Step 2: Fetch Transcript</h3>
           <p class="text-gray-300">
             Hit
             <span class="text-purple-400 font-semibold">Fetch Transcript</span>
@@ -68,13 +72,18 @@
         </div>
       </div>
     </section>
+
     <footer class="py-8 text-center text-gray-400 text-sm border-t border-white/10">
       <p>
-        &copy; {{ new Date().getFullYear() }} <NuxtLink href="https://github.com/M1dnght-dev" class="underline hover:text-white transition duration-300">M1dnght-dev</NuxtLink>. All rights reserved.
+        &copy; {{ new Date().getFullYear() }}
+        <NuxtLink href="https://github.com/M1dnght-dev" class="underline hover:text-white transition duration-300">
+          M1dnght-dev</NuxtLink>. All rights reserved.
         |
-        <NuxtLink href="https://m1dnght.dev/terms" class="underline hover:text-white transition duration-300">Terms of Service</NuxtLink>
-        | 
-        <NuxtLink href="https://m1dnght.dev/privacy" class="underline hover:text-white transition duration-300">Privacy Policy</NuxtLink>
+        <NuxtLink href="https://m1dnght.dev/terms" class="underline hover:text-white transition duration-300">Terms of
+          Service</NuxtLink>
+        |
+        <NuxtLink href="https://m1dnght.dev/privacy" class="underline hover:text-white transition duration-300">Privacy
+          Policy</NuxtLink>
       </p>
     </footer>
   </div>
@@ -89,7 +98,7 @@ const status = ref("");
 const statusClass = ref("text-center text-gray-300");
 const loading = ref(false);
 
-function extractVideoId(input: string) {
+function extractVideoId(input: string): string | null {
   try {
     const url = new URL(input);
     if (url.hostname.includes("youtube.com")) return url.searchParams.get("v");
@@ -100,9 +109,21 @@ function extractVideoId(input: string) {
   return input;
 }
 
-function isDebugMode() {
+function isDebugMode(): boolean {
   // @ts-ignore
   return typeof window !== "undefined" && window.debug === true;
+}
+
+interface TranscriptItem {
+  text: string;
+  offset?: number;
+  duration?: number;
+}
+
+interface TranscriptResponse {
+  transcript: TranscriptItem[];
+  error?: string;
+  details?: string;
 }
 
 const fetchTranscript = async () => {
@@ -119,49 +140,37 @@ const fetchTranscript = async () => {
   transcript.value = "";
 
   try {
-    const data = await $fetch("/api/transcript", {
+    const data = await $fetch<TranscriptResponse>("https://transcript-proxy.m1dnght.dev/v1/transcript", {
       method: "GET",
-      params: { videoId },
+      params: { videoId, lang: "en" },
     });
 
-    if (data?.success && "transcript" in data) {
-      transcript.value = data.transcript;
+    if (data.transcript?.length) {
+      transcript.value = data.transcript
+        .map(
+          t =>
+            `[${Math.floor((t.offset ?? 0) / 60)
+              .toString()
+              .padStart(2, "0")}:${((t.offset ?? 0) % 60)
+              .toFixed(2)
+              .padStart(5, "0")}] ${new DOMParser()
+              .parseFromString(t.text, "text/html")
+              .documentElement.textContent?.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))) ?? ""}`
+        )
+        .join("\n");
+
       status.value = "✅ Transcript fetched successfully!";
       statusClass.value = "text-green-400";
-    } else if ("error" in data && typeof data.error === "string") {
-      if ("details" in data && typeof data.details === "string" && isDebugMode()) {
-        // eslint-disable-next-line no-console
-        console.warn("Transcript fetch error details:", data.details);
-      }
-      if (
-        data.error.toLowerCase().includes("no transcripts are available") ||
-        data.error.toLowerCase().includes("transcript is empty or unavailable")
-      ) {
-        status.value =
-          `❌ No transcripts are available for this video. ` +
-          `Possible reasons:\n` +
-          `• The video does have captions, but they may be auto-generated and not accessible via the API.\n` +
-          `• The captions may be in a language not supported by the fetcher.\n` +
-          `• The video owner may have restricted access to captions.\n` +
-          `• YouTube may be blocking requests from this server (common in production environments).\n\n` +
-          `Troubleshooting:\n` +
-          `- Try refreshing the page and fetching again.\n` +
-          `- Check if the video has captions enabled on YouTube.\n` +
-          `- If you believe captions exist, please report this issue.\n`;
-        statusClass.value = "text-yellow-400 whitespace-pre-line";
-      } else {
-        status.value = `Error: ${data.error || "Unknown error"}`;
-        statusClass.value = "text-red-500";
-      }
+    } else if (data.error) {
+      if (data.details && isDebugMode()) console.warn("Transcript fetch error details:", data.details);
+      status.value = `Error: ${data.error}`;
+      statusClass.value = "text-red-500";
     } else {
       status.value = "Error: Unknown response from server.";
       statusClass.value = "text-red-500";
     }
   } catch (err: any) {
-    if (isDebugMode() && err?.stack) {
-      // eslint-disable-next-line no-console
-      console.error("Unexpected error details:", err.stack);
-    }
+    if (isDebugMode() && err?.stack) console.error("Unexpected error details:", err.stack);
     status.value = `Unexpected error: ${err?.message || "Unknown error"}`;
     statusClass.value = "text-red-500";
   } finally {
@@ -170,52 +179,27 @@ const fetchTranscript = async () => {
 };
 
 const downloadTranscript = () => {
-  const blob = new Blob([transcript.value], {
-    type: "text/plain;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
+  const blob = new Blob([transcript.value], { type: "text/plain;charset=utf-8" });
   const a = document.createElement("a");
-  a.href = url;
+  a.href = URL.createObjectURL(blob);
   a.download = `${videoInput.value.trim() || "transcript"}.txt`;
   a.click();
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(a.href);
 };
 </script>
 
 <style>
 @keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fadeInDown {
-  animation: fadeInDown 0.8s ease forwards;
-}
-
-.animate-fadeInUp {
-  animation: fadeInUp 0.8s ease forwards;
-}
-
-.animate-fadeIn {
-  animation: fadeInUp 1s ease forwards;
-}
+.animate-fadeInDown { animation: fadeInDown 0.8s ease forwards; }
+.animate-fadeInUp { animation: fadeInUp 0.8s ease forwards; }
+.animate-fadeIn { animation: fadeInUp 1s ease forwards; }
 </style>
